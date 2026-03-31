@@ -1,0 +1,12 @@
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# Generated icons (reproducible via generate-icons.js)
+# icons/   ← keep commented; icons are small and useful to ship
+
+# Logs
+*.log

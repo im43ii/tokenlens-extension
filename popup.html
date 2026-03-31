@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TokenLens Capture</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 370px;
+      background: #0a0a0f;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      font-size: 13px;
+    }
+
+    /* ── Header ──────────────────────────────────────── */
+    .header { display: flex; align-items: center; gap: 10px; padding: 12px 14px 10px; border-bottom: 1px solid #1a1a2e; }
+    .logo { width: 30px; height: 30px; background: linear-gradient(135deg, #6366f1, #4f46e5); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+    .header-text .title { font-size: 13px; font-weight: 700; color: #f1f5f9; }
+    .header-text .sub   { font-size: 10px; color: #475569; margin-top: 1px; }
+
+    /* ── Tabs ────────────────────────────────────────── */
+    .tabs { display: flex; border-bottom: 1px solid #1a1a2e; }
+    .tab { flex: 1; padding: 8px 0; text-align: center; font-size: 10.5px; font-weight: 500; color: #475569; cursor: pointer; border-bottom: 2px solid transparent; transition: color 0.15s, border-color 0.15s; background: none; border-top: none; border-left: none; border-right: none; }
+    .tab:hover { color: #94a3b8; }
+    .tab.active { color: #6366f1; border-bottom-color: #6366f1; }
+
+    /* ── Panels ──────────────────────────────────────── */
+    .panel { padding: 12px 14px 14px; }
+    .panel.hidden { display: none !important; }
+    .hidden { display: none !important; }
+
+    /* ── Shared inputs ───────────────────────────────── */
+    .field { margin-bottom: 10px; }
+    .field label { display: block; font-size: 10px; color: #475569; margin-bottom: 4px; }
+    input[type="text"], select, textarea {
+      width: 100%; background: #12121f; border: 1px solid #1e1e2e; border-radius: 6px;
+      padding: 6px 8px; color: #e2e8f0; font-size: 12px; outline: none;
+      font-family: inherit; transition: border-color 0.15s;
+    }
+    input[type="text"]:focus, select:focus, textarea:focus { border-color: #6366f1; }
+    textarea { resize: vertical; min-height: 60px; line-height: 1.4; }
+    select { cursor: pointer; }
+    select option { background: #12121f; }
+
+    /* ── Buttons ─────────────────────────────────────── */
+    .btn { width: 100%; padding: 8px 0; background: #6366f1; color: #fff; border: none; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+    .btn:hover:not(:disabled) { background: #4f52d4; }
+    .btn:disabled { background: #1e1e3a; color: #3d3f6b; cursor: not-allowed; }
+    .btn-sm { padding: 6px 10px; font-size: 11px; border-radius: 6px; border: none; cursor: pointer; font-weight: 500; transition: background 0.15s; }
+    .btn-ghost { background: #1a1a2e; color: #94a3b8; }
+    .btn-ghost:hover { background: #22223a; color: #e2e8f0; }
+    .btn-outline { background: transparent; border: 1px solid #1e1e2e; color: #64748b; font-size: 11px; font-weight: 500; border-radius: 6px; padding: 4px 10px; cursor: pointer; transition: all 0.15s; }
+    .btn-outline:hover { border-color: #6366f1; color: #818cf8; }
+    .btn-danger { background: #1a0d0d; color: #f87171; border: 1px solid #3b1212; font-size: 11px; border-radius: 6px; padding: 5px 10px; cursor: pointer; transition: all 0.15s; }
+    .btn-danger:hover { background: #3b1212; }
+
+    /* ── Error ───────────────────────────────────────── */
+    .error-msg { margin-top: 8px; padding: 7px 10px; background: #1a0d0d; border: 1px solid #3b1212; border-radius: 6px; color: #f87171; font-size: 11px; line-height: 1.4; }
+
+    /* ════════════════════════════════════════════════════
+       ANALYZE TAB
+    ════════════════════════════════════════════════════ */
+    .site-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; background: #12121f; border: 1px solid #1e1e2e; border-radius: 20px; font-size: 11px; color: #64748b; margin-bottom: 12px; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: #64748b; transition: background 0.2s; }
+    .dot.active { background: #22c55e; }
+    .count-row { margin-bottom: 12px; }
+    .count-num  { font-size: 26px; font-weight: 800; color: #6366f1; line-height: 1; letter-spacing: -0.5px; }
+    .count-label { font-size: 10px; color: #475569; margin-top: 2px; }
+    .url-row { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+    .url-label { font-size: 10px; color: #475569; white-space: nowrap; }
+    .url-row input { flex: 1; }
+    .results-box { margin-top: 10px; padding: 10px 12px; background: #0d0d1a; border: 1px solid #1a1a2e; border-radius: 8px; }
+    .result-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
+    .result-row + .result-row { border-top: 1px solid #13131f; margin-top: 4px; padding-top: 6px; }
+    .rl { color: #475569; font-size: 11px; }
+    .rv { color: #e2e8f0; font-size: 12px; font-weight: 600; }
+    .rv.green { color: #22c55e; }
+    .rv.yellow { color: #f59e0b; }
+    .tip-row { margin-top: 8px; padding-top: 8px; border-top: 1px solid #1a1a2e; font-size: 11px; color: #64748b; line-height: 1.5; }
+    .tip-row em { color: #818cf8; font-style: normal; }
+
+    /* ════════════════════════════════════════════════════
+       IMPROVE TAB
+    ════════════════════════════════════════════════════ */
+    .detect-hint { display: flex; align-items: center; gap: 5px; font-size: 10px; color: #22c55e; margin-bottom: 8px; }
+    .detect-hint::before { content: '✓'; }
+    .vague-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .vague-label { font-size: 10px; color: #475569; white-space: nowrap; }
+    .vague-bar { flex: 1; height: 4px; background: #1a1a2e; border-radius: 2px; overflow: hidden; }
+    .vague-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+    .vague-score-text { font-size: 10px; font-weight: 700; min-width: 28px; text-align: right; }
+    .clarify-box { margin-bottom: 10px; padding: 9px 11px; background: #15100a; border: 1px solid #3d2a0a; border-radius: 8px; }
+    .clarify-title { font-size: 10px; font-weight: 700; color: #f59e0b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .clarify-list { list-style: none; }
+    .clarify-list li { font-size: 11px; color: #94a3b8; padding: 2px 0; }
+    .clarify-list li::before { content: '? '; color: #f59e0b; font-weight: 700; }
+    .stack-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; background: #0d1a1a; border: 1px solid #0a3030; border-radius: 20px; font-size: 10px; color: #2dd4bf; margin-bottom: 10px; }
+    .stack-reason { font-size: 10px; color: #475569; margin-left: 2px; }
+    .var-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+    .var-tab { flex: 1; padding: 5px 4px; background: #12121f; border: 1px solid #1e1e2e; border-radius: 6px; font-size: 10px; font-weight: 600; color: #475569; cursor: pointer; text-align: center; transition: all 0.15s; }
+    .var-tab:hover { border-color: #6366f1; color: #94a3b8; }
+    .var-tab.active { background: #1a1a3a; border-color: #6366f1; color: #818cf8; }
+    .var-tab .var-score { display: block; font-size: 9px; font-weight: 400; color: #3d3f6b; margin-top: 1px; }
+    .var-tab.active .var-score { color: #4f52d4; }
+    .var-panel { display: none; }
+    .var-panel.active { display: block; }
+    .improved-box { padding: 10px 12px; background: #0d0d1a; border: 1px solid #1a1a2e; border-radius: 8px; }
+    .improved-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .improved-label { font-size: 10px; color: #475569; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .score-badge { padding: 2px 7px; border-radius: 20px; font-size: 11px; font-weight: 700; background: #1a1a2e; color: #6366f1; }
+    .score-badge.high { background: #0d2010; color: #22c55e; }
+    .score-badge.mid  { background: #1a1500; color: #f59e0b; }
+    .score-badge.low  { background: #1a0d0d; color: #f87171; }
+    .improved-text { font-size: 11.5px; color: #c7d2fe; line-height: 1.6; white-space: pre-wrap; word-break: break-word; margin-bottom: 10px; max-height: 160px; overflow-y: auto; }
+    .improved-text::-webkit-scrollbar { width: 4px; }
+    .improved-text::-webkit-scrollbar-track { background: transparent; }
+    .improved-text::-webkit-scrollbar-thumb { background: #1e1e2e; border-radius: 2px; }
+    .action-row { display: flex; gap: 6px; }
+    .action-row .btn-sm { flex: 1; text-align: center; }
+    .tip-improve { margin-top: 8px; font-size: 10px; color: #475569; line-height: 1.5; padding: 6px 9px; background: #0d0d1a; border: 1px solid #1a1a2e; border-radius: 6px; }
+    .tip-improve em { color: #818cf8; font-style: normal; }
+
+    /* ════════════════════════════════════════════════════
+       AI BUILDER TAB
+    ════════════════════════════════════════════════════ */
+    .ab-setup-title { font-size: 13px; font-weight: 700; color: #f1f5f9; margin-bottom: 4px; }
+    .ab-setup-sub   { font-size: 11px; color: #475569; margin-bottom: 14px; line-height: 1.4; }
+    .provider-cards { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+    .provider-card { padding: 10px 12px; background: #12121f; border: 1px solid #1e1e2e; border-radius: 8px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 10px; }
+    .provider-card:hover { border-color: #6366f1; background: #14142a; }
+    .provider-card.selected { border-color: #6366f1; background: #14142a; }
+    .provider-icon { font-size: 20px; flex-shrink: 0; }
+    .provider-name { font-size: 12px; font-weight: 700; color: #e2e8f0; }
+    .provider-desc { font-size: 10px; color: #475569; margin-top: 1px; }
+    .ab-key-row { margin-bottom: 12px; }
+    .ab-key-row label { font-size: 10px; color: #475569; display: block; margin-bottom: 4px; }
+    .ab-key-input-wrap { position: relative; }
+    .ab-key-input-wrap input { padding-right: 56px; }
+    .ab-key-toggle { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 10px; color: #475569; cursor: pointer; background: none; border: none; padding: 2px 4px; }
+    .ab-key-toggle:hover { color: #94a3b8; }
+    .ab-input-label { font-size: 11px; color: #94a3b8; margin-bottom: 8px; line-height: 1.5; }
+    .ab-change-key  { font-size: 10px; color: #475569; cursor: pointer; text-decoration: underline; }
+    .ab-change-key:hover { color: #94a3b8; }
+
+    /* Project banner (inside AI Builder input screen) */
+    .ab-banner { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; background: #0a160a; border: 1px solid #14401a; border-radius: 7px; margin-bottom: 10px; }
+    .ab-banner-left { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #4ade80; font-weight: 500; overflow: hidden; }
+    .ab-banner-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 210px; }
+    .ab-banner-ignore { font-size: 10px; color: #3d5c3d; cursor: pointer; background: none; border: none; padding: 0; text-decoration: underline; white-space: nowrap; flex-shrink: 0; }
+    .ab-banner-ignore:hover { color: #94a3b8; }
+
+    .ab-progress { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .ab-progress-text { font-size: 10px; color: #475569; }
+    .ab-progress-dots { display: flex; gap: 4px; }
+    .ab-dot { width: 5px; height: 5px; border-radius: 50%; background: #1a1a2e; transition: background 0.2s; }
+    .ab-dot.done   { background: #4f46e5; }
+    .ab-dot.active { background: #6366f1; }
+    .ab-question-title { font-size: 13px; font-weight: 700; color: #f1f5f9; margin-bottom: 10px; line-height: 1.4; }
+    .ab-options { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .ab-option { padding: 6px 12px; background: #12121f; border: 1px solid #1e1e2e; border-radius: 20px; font-size: 11px; font-weight: 500; color: #94a3b8; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .ab-option:hover { border-color: #6366f1; color: #818cf8; background: #14142a; }
+    .ab-option.idk  { border-style: dashed; color: #475569; }
+    .ab-option.idk:hover { border-color: #4f46e5; color: #6366f1; }
+    .ab-custom-row { display: flex; gap: 6px; margin-bottom: 10px; }
+    .ab-custom-row input { flex: 1; font-size: 11px; }
+    .ab-custom-row button { padding: 6px 10px; font-size: 11px; font-weight: 600; background: #6366f1; color: #fff; border: none; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+    .ab-custom-row button:hover { background: #4f52d4; }
+    .ab-nav { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+    .ab-back { font-size: 11px; color: #475569; cursor: pointer; background: none; border: none; padding: 0; }
+    .ab-back:hover { color: #94a3b8; }
+    .ab-generating { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 0; gap: 12px; }
+    .ab-spinner { width: 32px; height: 32px; border: 3px solid #1a1a2e; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .ab-gen-title { font-size: 13px; font-weight: 700; color: #f1f5f9; }
+    .ab-gen-sub   { font-size: 10px; color: #475569; }
+    .ab-result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .ab-result-title  { font-size: 12px; font-weight: 700; color: #f1f5f9; }
+    .ab-result-box { background: #0d0d1a; border: 1px solid #1a1a2e; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+    .ab-result-text { font-size: 11.5px; color: #c7d2fe; line-height: 1.6; white-space: pre-wrap; word-break: break-word; max-height: 180px; overflow-y: auto; }
+    .ab-result-text::-webkit-scrollbar { width: 4px; }
+    .ab-result-text::-webkit-scrollbar-track { background: transparent; }
+    .ab-result-text::-webkit-scrollbar-thumb { background: #1e1e2e; border-radius: 2px; }
+    .ab-tips { margin-bottom: 8px; }
+    .ab-tips li { font-size: 10px; color: #64748b; padding: 1px 0; list-style: none; }
+    .ab-tips li::before { content: '→ '; color: #4f46e5; }
+    .ab-action-row { display: flex; gap: 6px; margin-bottom: 6px; }
+    .ab-action-row .btn-sm { flex: 1; text-align: center; }
+    .ab-start-over { display: block; text-align: center; font-size: 10px; color: #3d3f6b; cursor: pointer; margin-top: 4px; margin-bottom: 6px; }
+    .ab-start-over:hover { color: #64748b; }
+
+    /* Task completion */
+    .ab-task-card { padding: 8px 10px; background: #0a160a; border: 1px solid #14401a; border-radius: 7px; margin-top: 6px; }
+    .ab-task-q { font-size: 11px; color: #4ade80; margin-bottom: 7px; line-height: 1.4; }
+    .ab-task-q strong { color: #86efac; }
+    .ab-task-btns { display: flex; gap: 6px; }
+    .ab-task-btns .btn-sm { flex: 1; text-align: center; }
+    .ab-next-label { font-size: 10px; color: #4ade80; margin: 8px 0 5px; }
+    .ab-next-row { display: flex; gap: 6px; }
+    .ab-next-row input { flex: 1; font-size: 11px; }
+    .ab-next-row button { padding: 6px 10px; font-size: 11px; font-weight: 600; background: #16a34a; color: #f0fdf4; border: none; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+    .ab-next-row button:hover { background: #15803d; }
+
+    /* ════════════════════════════════════════════════════
+       MY PROJECT TAB
+    ════════════════════════════════════════════════════ */
+    #panel-project { max-height: 490px; overflow-y: auto; padding: 12px 14px 14px; }
+    #panel-project::-webkit-scrollbar { width: 4px; }
+    #panel-project::-webkit-scrollbar-track { background: transparent; }
+    #panel-project::-webkit-scrollbar-thumb { background: #1e1e2e; border-radius: 2px; }
+
+    /* Welcome card */
+    .pm-welcome-card { background: linear-gradient(135deg, #12121f, #1a1a2e); border: 1px solid #1e1e2e; border-radius: 10px; padding: 14px; margin-bottom: 14px; text-align: center; }
+    .pm-welcome-icon  { font-size: 26px; margin-bottom: 6px; }
+    .pm-welcome-title { font-size: 13px; font-weight: 700; color: #f1f5f9; margin-bottom: 4px; }
+    .pm-welcome-sub   { font-size: 11px; color: #475569; line-height: 1.5; }
+
+    /* Project card */
+    .pm-card { background: #0d0d1a; border: 1px solid #1a1a2e; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+    .pm-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+    .pm-project-name { font-size: 14px; font-weight: 800; color: #f1f5f9; letter-spacing: -0.3px; }
+    .pm-updated { font-size: 10px; color: #3d3f6b; margin-top: 2px; }
+
+    /* Tech stack badges */
+    .pm-stack-row { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+    .pm-badge { padding: 2px 8px; border: 1px solid #1e1e2e; border-radius: 20px; font-size: 10px; color: #94a3b8; background: #12121f; }
+    .pm-badge.fe { border-color: #312e81; color: #818cf8; background: #0d0c1a; }
+    .pm-badge.be { border-color: #064e3b; color: #34d399; background: #080f0c; }
+    .pm-badge.db { border-color: #1e3a5f; color: #60a5fa; background: #08101a; }
+    .pm-badge.st { border-color: #155e75; color: #38bdf8; background: #08121a; }
+    .pm-badge.py { border-color: #3b2470; color: #a78bfa; background: #0c091a; }
+
+    /* Task + prefs rows */
+    .pm-section { margin-bottom: 10px; }
+    .pm-section-label { font-size: 9px; color: #3d3f6b; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; }
+    .pm-section-value { font-size: 11px; color: #c7d2fe; font-weight: 500; line-height: 1.4; }
+    .pm-section-value.muted { color: #475569; font-weight: 400; }
+
+    /* Completed badge */
+    .pm-done-badge { display: inline-block; padding: 1px 7px; background: #0a1a0a; border: 1px solid #14401a; border-radius: 20px; font-size: 9px; color: #4ade80; margin-bottom: 10px; }
+
+    /* Update task row */
+    .pm-update-row { display: flex; gap: 6px; margin-bottom: 10px; }
+    .pm-update-row input { flex: 1; font-size: 11px; }
+    .pm-update-row button { padding: 5px 10px; font-size: 13px; background: #6366f1; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+    .pm-update-row button:hover { background: #4f52d4; }
+
+    /* History */
+    .pm-history-title { font-size: 9px; color: #3d3f6b; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+    .pm-history-item { padding: 6px 9px; background: #12121f; border: 1px solid #1e1e2e; border-radius: 6px; margin-bottom: 5px; cursor: pointer; transition: border-color 0.15s; }
+    .pm-history-item:hover { border-color: #6366f1; }
+    .pm-history-req { font-size: 10px; color: #6366f1; font-weight: 600; margin-bottom: 2px; }
+    .pm-history-preview { font-size: 10px; color: #475569; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .pm-history-copy { font-size: 9px; color: #3d3f6b; }
+
+    /* Footer rows */
+    .pm-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+    .pm-edit-link  { font-size: 10px; color: #475569; cursor: pointer; text-decoration: underline; }
+    .pm-edit-link:hover  { color: #94a3b8; }
+    .pm-reset-link { font-size: 10px; color: #3b1212; cursor: pointer; }
+    .pm-reset-link:hover { color: #f87171; }
+
+    .pm-cancel-link { font-size: 10px; color: #475569; cursor: pointer; text-decoration: underline; }
+    .pm-cancel-link:hover { color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">🔍</div>
+    <div class="header-text">
+      <div class="title">TokenLens Capture</div>
+      <div class="sub">AI token analyzer</div>
+    </div>
+  </div>
+
+  <!-- Main tabs -->
+  <div class="tabs">
+    <button class="tab active" data-tab="analyze">Analyze</button>
+    <button class="tab"        data-tab="improve">✨ Improve</button>
+    <button class="tab"        data-tab="builder">🤖 Builder</button>
+    <button class="tab"        data-tab="project">🗂️ Project</button>
+  </div>
+
+  <!-- ══════════════════ ANALYZE PANEL ══════════════════ -->
+  <div class="panel" id="panel-analyze">
+    <div class="site-badge"><span class="dot" id="dot"></span><span id="site-name">Detecting…</span></div>
+    <div class="count-row">
+      <div class="count-num" id="msg-count">—</div>
+      <div class="count-label">messages detected</div>
+    </div>
+    <div class="url-row">
+      <span class="url-label">Server:</span>
+      <input type="text" id="server-url" value="http://localhost:3000" />
+    </div>
+    <button class="btn" id="analyze-btn" disabled>Analyze Conversation</button>
+    <div id="analyze-results" class="results-box hidden"></div>
+    <div id="analyze-error"   class="error-msg hidden"></div>
+  </div>
+
+  <!-- ══════════════════ IMPROVE PANEL ══════════════════ -->
+  <div class="panel hidden" id="panel-improve">
+    <div id="detect-hint" class="detect-hint hidden">Prompt detected in chat input</div>
+    <div class="field">
+      <label>Your prompt</label>
+      <textarea id="improve-prompt-input" placeholder="Type or paste your prompt here…" rows="3"></textarea>
+    </div>
+    <div class="field">
+      <label>Goal <span style="color:#3d3f6b">(optional — auto-detected)</span></label>
+      <select id="improve-goal">
+        <option value="">Auto-detect</option>
+        <option value="fix_code">Fix Code</option>
+        <option value="write_code">Write Code</option>
+        <option value="explain">Explain</option>
+        <option value="review">Review</option>
+        <option value="general">General</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>What are you working on? <span style="color:#3d3f6b">(optional)</span></label>
+      <input type="text" id="improve-context" placeholder="e.g. React component, Python API…" />
+    </div>
+    <button class="btn" id="improve-btn">✨ Improve Prompt</button>
+    <div id="improve-result" class="hidden" style="margin-top:10px">
+      <div class="vague-row">
+        <span class="vague-label">Specificity</span>
+        <div class="vague-bar"><div class="vague-fill" id="vague-fill"></div></div>
+        <span class="vague-score-text" id="vague-score-text"></span>
+      </div>
+      <div id="clarify-box" class="clarify-box hidden">
+        <div class="clarify-title">Before you send — clarify these:</div>
+        <ul class="clarify-list" id="clarify-list"></ul>
+      </div>
+      <div id="stack-badge" class="stack-badge hidden">
+        <span>⚡</span><span id="stack-primary"></span><span class="stack-reason" id="stack-reason"></span>
+      </div>
+      <div class="var-tabs">
+        <button class="var-tab active" data-var="0">Quick<span class="var-score" id="var-score-0">—/10</span></button>
+        <button class="var-tab"        data-var="1">Pro ⭐<span class="var-score" id="var-score-1">—/10</span></button>
+        <button class="var-tab"        data-var="2">Detailed<span class="var-score" id="var-score-2">—/10</span></button>
+      </div>
+      <div class="improved-box">
+        <div id="var-panel-0" class="var-panel active">
+          <div class="improved-header"><span class="improved-label">Quick</span><span class="score-badge" id="badge-0">—/10</span></div>
+          <div class="improved-text" id="text-0"></div>
+        </div>
+        <div id="var-panel-1" class="var-panel">
+          <div class="improved-header"><span class="improved-label">Pro</span><span class="score-badge" id="badge-1">—/10</span></div>
+          <div class="improved-text" id="text-1"></div>
+        </div>
+        <div id="var-panel-2" class="var-panel">
+          <div class="improved-header"><span class="improved-label">Detailed</span><span class="score-badge" id="badge-2">—/10</span></div>
+          <div class="improved-text" id="text-2"></div>
+        </div>
+        <div class="action-row" style="margin-top:10px">
+          <button class="btn-sm btn-ghost" id="copy-btn">📋 Copy</button>
+          <button class="btn-sm btn-ghost" id="insert-btn">💉 Insert</button>
+        </div>
+      </div>
+      <div id="improve-tip" class="tip-improve hidden"></div>
+    </div>
+    <div id="improve-error" class="error-msg hidden"></div>
+  </div>
+
+  <!-- ══════════════════ AI BUILDER PANEL ══════════════════ -->
+  <div class="panel hidden" id="panel-builder">
+
+    <!-- Setup screen -->
+    <div id="ab-setup">
+      <div class="ab-setup-title">Connect your AI</div>
+      <div class="ab-setup-sub">Keys are saved only in your browser — never sent anywhere else.</div>
+      <div class="provider-cards">
+        <div class="provider-card" id="ab-card-anthropic" data-provider="anthropic">
+          <span class="provider-icon">🟣</span>
+          <div><div class="provider-name">Anthropic (Claude Haiku)</div><div class="provider-desc">Fast, cheap, excellent quality</div></div>
+        </div>
+        <div class="provider-card" id="ab-card-openai" data-provider="openai">
+          <span class="provider-icon">🟢</span>
+          <div><div class="provider-name">OpenAI (GPT-4o mini)</div><div class="provider-desc">Most popular, great results</div></div>
+        </div>
+        <div class="provider-card" id="ab-card-groq" data-provider="groq">
+          <span class="provider-icon">🟠</span>
+          <div><div class="provider-name">Groq (Llama 3.3) <span style="color:#f59e0b;font-size:9px;font-weight:700">FREE</span></div><div class="provider-desc">Fastest inference, free tier available</div></div>
+        </div>
+      </div>
+      <div class="ab-key-row">
+        <label id="ab-key-label">API Key</label>
+        <div class="ab-key-input-wrap">
+          <input type="password" id="ab-api-key" placeholder="sk-ant-..." autocomplete="off" />
+          <button class="ab-key-toggle" id="ab-key-toggle">Show</button>
+        </div>
+      </div>
+      <button class="btn" id="ab-save-key">Save &amp; Continue →</button>
+      <div id="ab-setup-error" class="error-msg hidden"></div>
+    </div>
+
+    <!-- Input screen -->
+    <div id="ab-input" class="hidden">
+      <!-- Project memory banner -->
+      <div id="ab-project-banner" class="ab-banner hidden">
+        <div class="ab-banner-left">
+          <span>📁</span>
+          <span class="ab-banner-name" id="ab-banner-name">My Project</span>
+        </div>
+        <button class="ab-banner-ignore" id="ab-banner-ignore">Ignore context</button>
+      </div>
+      <div class="ab-input-label">What do you want to build?</div>
+      <div class="field">
+        <textarea id="ab-request" placeholder="e.g. ecommerce site, todo app, dashboard, landing page..." rows="3"></textarea>
+      </div>
+      <button class="btn" id="ab-start-btn">Start Building →</button>
+      <div style="margin-top:8px;text-align:center">
+        <span class="ab-change-key" id="ab-change-key">Change API key</span>
+      </div>
+    </div>
+
+    <!-- Questions screen -->
+    <div id="ab-questions" class="hidden">
+      <div class="ab-progress">
+        <span class="ab-progress-text" id="ab-step-text">Step 1 of 4</span>
+        <div class="ab-progress-dots" id="ab-dots"></div>
+      </div>
+      <div class="ab-question-title" id="ab-q-title">What framework?</div>
+      <div class="ab-options" id="ab-options"></div>
+      <div class="ab-custom-row">
+        <input type="text" id="ab-custom-input" placeholder="Or type your own answer…" />
+        <button id="ab-custom-submit">Use</button>
+      </div>
+      <div class="ab-nav">
+        <button class="ab-back" id="ab-back-btn">← Back</button>
+        <span></span>
+      </div>
+      <div id="ab-q-error" class="error-msg hidden"></div>
+    </div>
+
+    <!-- Generating screen -->
+    <div id="ab-generating" class="ab-generating hidden">
+      <div class="ab-spinner"></div>
+      <div class="ab-gen-title">Building your perfect prompt…</div>
+      <div class="ab-gen-sub" id="ab-gen-provider">Powered by Claude Haiku</div>
+    </div>
+
+    <!-- Result screen -->
+    <div id="ab-result" class="hidden">
+      <div class="ab-result-header">
+        <span class="ab-result-title">Your generated prompt</span>
+        <span class="score-badge" id="ab-score-badge">—/10</span>
+      </div>
+      <div class="ab-result-box">
+        <div class="ab-result-text" id="ab-result-text"></div>
+      </div>
+      <ul class="ab-tips" id="ab-tips"></ul>
+      <div class="ab-action-row">
+        <button class="btn-sm btn-ghost" id="ab-copy-btn">📋 Copy</button>
+        <button class="btn-sm btn-ghost" id="ab-insert-btn">💉 Insert</button>
+        <button class="btn-sm btn-ghost" id="ab-regen-btn">🔄 Redo</button>
+      </div>
+      <span class="ab-start-over" id="ab-start-over">← Start over</span>
+
+      <!-- Task completion -->
+      <div id="ab-task-card" class="ab-task-card hidden">
+        <div class="ab-task-q">✅ Mark <strong id="ab-task-name">this task</strong> as completed?</div>
+        <div class="ab-task-btns">
+          <button class="btn-sm btn-ghost" id="ab-mark-yes">Yes, done!</button>
+          <button class="btn-sm btn-ghost" id="ab-mark-no">Not yet</button>
+        </div>
+      </div>
+      <div id="ab-next-task-row" class="hidden" style="margin-top:6px">
+        <div class="ab-next-label">🚀 What's next?</div>
+        <div class="ab-next-row">
+          <input type="text" id="ab-next-input" placeholder="e.g. add payment page, fix auth bug…" />
+          <button id="ab-next-save">Save →</button>
+        </div>
+      </div>
+
+      <div id="ab-result-error" class="error-msg hidden"></div>
+    </div>
+
+  </div><!-- /panel-builder -->
+
+  <!-- ══════════════════ MY PROJECT PANEL ══════════════════ -->
+  <div class="panel hidden" id="panel-project">
+
+    <!-- Empty / Edit state -->
+    <div id="pm-empty">
+      <div class="pm-welcome-card">
+        <div class="pm-welcome-icon">🗂️</div>
+        <div class="pm-welcome-title">Set up your project once</div>
+        <div class="pm-welcome-sub">TokenLens will remember your stack and generate perfectly tailored prompts every time.</div>
+      </div>
+      <div class="field">
+        <label>Project name</label>
+        <input type="text" id="pm-name" placeholder="e.g. ShopFlow, DevBoard, MyApp…" />
+      </div>
+      <div class="field">
+        <label>What are you building?</label>
+        <textarea id="pm-description" rows="2" placeholder="e.g. A SaaS dashboard for freelancers to track clients and invoices"></textarea>
+      </div>
+      <div class="field">
+        <label>What are you working on right now?</label>
+        <input type="text" id="pm-task" placeholder="e.g. building the auth flow, fixing checkout bug…" />
+      </div>
+      <div class="field">
+        <label>Your preferences <span style="color:#3d3f6b">(optional)</span></label>
+        <input type="text" id="pm-prefs" placeholder="e.g. TypeScript always, functional components, dark theme" />
+      </div>
+      <button class="btn" id="pm-save-btn">Save Project →</button>
+      <div style="margin-top:8px;text-align:center">
+        <span class="pm-cancel-link hidden" id="pm-cancel">← Cancel</span>
+      </div>
+      <div id="pm-save-error" class="error-msg hidden"></div>
+    </div>
+
+    <!-- Filled state -->
+    <div id="pm-filled" class="hidden">
+      <div class="pm-card">
+        <div class="pm-card-header">
+          <div>
+            <div class="pm-project-name" id="pm-name-display">—</div>
+            <div class="pm-updated" id="pm-updated-display">—</div>
+          </div>
+        </div>
+
+        <!-- Tech stack badges -->
+        <div class="pm-stack-row" id="pm-stack-badges"></div>
+
+        <!-- Completed tasks badge -->
+        <div id="pm-done-badge" class="pm-done-badge hidden"></div>
+
+        <!-- Current task -->
+        <div class="pm-section" id="pm-task-section">
+          <div class="pm-section-label">Working on</div>
+          <div class="pm-section-value" id="pm-task-display">—</div>
+        </div>
+
+        <!-- Preferences -->
+        <div class="pm-section" id="pm-prefs-section">
+          <div class="pm-section-label">Preferences</div>
+          <div class="pm-section-value muted" id="pm-prefs-display">—</div>
+        </div>
+
+        <!-- Update task quick input -->
+        <div class="pm-update-row">
+          <input type="text" id="pm-update-input" placeholder="Update current task…" />
+          <button id="pm-update-btn">→</button>
+        </div>
+
+        <!-- Recent prompts -->
+        <div id="pm-history-wrap">
+          <div class="pm-history-title">Recent prompts</div>
+          <div id="pm-history-list"></div>
+        </div>
+      </div>
+
+      <div class="pm-footer">
+        <span class="pm-edit-link"  id="pm-edit-btn">Edit project</span>
+        <span class="pm-reset-link" id="pm-reset-btn">Reset project</span>
+      </div>
+    </div>
+
+  </div><!-- /panel-project -->
+
+  <script src="popup.js"></script>
+</body>
+</html>
