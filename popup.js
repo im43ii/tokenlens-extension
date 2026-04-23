@@ -7,13 +7,26 @@ let detectedData = null;
 let variations   = [];
 let activeVar    = 0;
 
-// ── Persist server URL ────────────────────────────────────────────────────────
+// ── Persist server URL and token ──────────────────────────────────────────────
 chrome.storage.local.get('serverUrl', ({ serverUrl }) => {
   if (serverUrl) $('server-url').value = serverUrl;
 });
 $('server-url').addEventListener('change', () => {
   chrome.storage.local.set({ serverUrl: $('server-url').value });
 });
+
+const savedToken = localStorage.getItem('tl_token');
+if (savedToken) $('tl-token').value = savedToken;
+$('tl-token').addEventListener('change', () => {
+  const t = $('tl-token').value.trim();
+  if (t) localStorage.setItem('tl_token', t);
+  else localStorage.removeItem('tl_token');
+});
+
+function authHeaders() {
+  const token = localStorage.getItem('tl_token') || $('tl-token').value.trim();
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
 
 // ── Main tab switching ────────────────────────────────────────────────────────
 document.querySelectorAll('.tab').forEach(btn => {
@@ -182,6 +195,11 @@ async function tryAutoFillImprovePrompt(tabId) {
 
 $('analyze-btn').addEventListener('click', async () => {
   if (!detectedData?.messages?.length) return;
+  const token = localStorage.getItem('tl_token') || $('tl-token').value.trim();
+  if (!token) {
+    showAnalyzeError(`No token found. Get your free token at ${serverUrl()}/register, then paste it in the Token field above.`);
+    return;
+  }
   const btn = $('analyze-btn');
   btn.disabled = true;
   btn.textContent = 'Analyzing…';
@@ -189,7 +207,7 @@ $('analyze-btn').addEventListener('click', async () => {
   try {
     const res = await fetch(`${serverUrl()}/analyze-direct`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ messages: detectedData.messages, model: detectedData.model, editor: detectedData.editor, provider: detectedData.provider }),
     });
     if (!res.ok) { const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` })); throw new Error(err.error ?? `HTTP ${res.status}`); }
@@ -233,7 +251,7 @@ $('improve-btn').addEventListener('click', async () => {
   $('improve-result').classList.add('hidden');
   try {
     const res = await fetch(`${serverUrl()}/improve-prompt`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ prompt, goal, context }),
     });
     if (!res.ok) { const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` })); throw new Error(err.error ?? `HTTP ${res.status}`); }
@@ -533,7 +551,7 @@ async function abGenerate() {
 
     const res = await fetch(`${serverUrl()}/generate-prompt`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({
         userRequest:    ab.request,
         answers:        ab.answers,
